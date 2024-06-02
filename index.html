@@ -78,11 +78,8 @@
             display: none;
         }
         .placeholder {
-            font-size: 25px;
+            font-size: 20px;
             color: #6c757d;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            text-align: center;
         }
         .translation-box {
             font-size: 25px;
@@ -135,6 +132,7 @@
                 <div class="translation-box" id="translation-box">
                     <pre id="translation-text">read image</pre>
                     <div class="button-container">
+                        <img src="https://siuwww.github.io/ChatICT/images/copy-icon.png" id="copy-text-btn" class="icon-button">
                         <img src="https://siuwww.github.io/ChatICT/images/play-icon.png" id="play-audio-btn" class="icon-button">
                         <img src="https://siuwww.github.io/ChatICT/images/stop-icon.png" id="stop-audio-btn" class="icon-button">
                     </div>
@@ -176,6 +174,19 @@
                     });
                 };
                 reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('copy-text-btn').addEventListener('click', function() {
+            const text = document.getElementById('translation-text').textContent;
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Text copied to clipboard.');
+                }).catch(err => {
+                    console.error('Error copying text: ', err);
+                });
+            } else {
+                alert('No text available to copy.');
             }
         });
 
