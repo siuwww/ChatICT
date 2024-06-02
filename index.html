@@ -16,6 +16,7 @@
         }
         header {
             background-color: #00C4B3;
+            background-color: #272B73;
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -53,48 +54,57 @@
             width: 100%;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 20px; /* Adjust spacing between sections */
         }
         #uploaded-image-container, .translation-box {
-            flex: 1; /* Makes each box take equal space */
-            margin: 5px; /* Adds a little space between the two boxes */
-            height: 400px; /* Set a fixed height or make it responsive based on content */
+            width: 48%;
+            height: auto;
             border-radius: 12px;
-            padding: 20px;
+            padding: 40px;
+            transition: border-color 0.3s;
+            background-color: white;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             border: 2px dashed #00C4B3;
-            overflow: hidden; /* Ensures nothing spills out */
+            border: 2px dashed #272B73;
         }
         #uploaded-image-container:hover, .translation-box:hover {
             border-color: #00a398;
+            border-color: #272B73;
         }
         #uploaded-image {
-            width: 100%; /* Ensures the image takes up the full container width */
-            height: auto; /* Maintains aspect ratio */
-            max-height: 100%; /* Ensures image does not exceed container height */
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 12px;
+            display: none;
         }
         .placeholder {
             font-size: 20px;
             color: #6c757d;
         }
         .translation-box {
-            background: white;
-            overflow-y: auto; /* Allows scrolling inside the box if content is too long */
-            position: relative; /* For positioning the buttons inside */
+            font-size: 16px;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 2px dashed #00C4B3;
+            border: 2px dashed #272B73;
+            overflow-y: auto;
+            max-height: 600px;
+            flex-direction: column;
+            align-items: center;
         }
         .button-section {
-            position: absolute; /* Positions the buttons at the bottom of the translation box */
-            bottom: 10px;
-            width: 100%;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.9); /* Slightly transparent background */
             display: flex;
-            justify-content: space-around;
+            justify-content: center;
+            flex-wrap: nowrap;
+            width: 100%;
+            margin-top: 20px;
         }
-        button {
+        .button-section button {
             background-color: #00C4B3;
+            background-color: #272B73;
             color: white;
             border: none;
             border-radius: 8px;
@@ -103,16 +113,102 @@
             margin: 5px;
             cursor: pointer;
             transition: background-color 0.3s, transform 0.3s;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
-        button:hover {
+        .button-section button:hover {
             background-color: #00a398;
+            background-color: #272B73;
             transform: translateY(-2px);
         }
-        input[type="file"] {
+        .button-section input[type="file"] {
             display: none;
         }
         .footer-logo {
             position: absolute;
             bottom: 10px;
             right: 10px;
+            width: 250px; /* Adjust as needed */
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Text Image Scanner</h1>
+    </header>
+    <main>
+        <div class="content">
+            <div class="image-translation-section">
+                <div id="uploaded-image-container">
+                    <span class="placeholder">Upload an image to start</span>
+                    <img id="uploaded-image" src="" alt="Uploaded Image">
+                </div>
+                <div class="translation-box" id="translation-box">
+                    <pre id="translation-text">read image</pre>
+                    <div class="button-section">
+                        <button class="audio-btn" id="upload-btn">Upload Image</button>
+                        <input type="file" id="file-input" accept="image/*">
+                        <button class="chat-btn" id="play-audio-btn">Listen to Text</button>
+                        <button class="image-btn" id="stop-audio-btn">Stop Playback</button>
+                        <button class="scan-btn">Activate Camera</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <img src="https://siuwww.github.io/ChatICT/images/anu.gif" alt="ANU Logo" class="footer-logo">
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script>
+        let audio = null;
+        document.getElementById('upload-btn').addEventListener('click', function() {
+            document.getElementById('file-input').click();
+        });
+        document.getElementById('file-input').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('uploaded-image');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    document.querySelector('.placeholder').style.display = 'none';
+                    // Process the image with Tesseract
+                    Tesseract.recognize(
+                        e.target.result,
+                        'kor+eng',
+                        {
+                            logger: m => console.log(m)
+                        }
+                    ).then(({ data: { text } }) => {
+                        document.getElementById('translation-text').textContent = text;
+                        // Adjust the height of the containers to be equal
+                        const translationBox = document.querySelector('.translation-box');
+                        const imageContainer = document.getElementById('uploaded-image-container');
+                        const newHeight = Math.max(translationBox.scrollHeight, imageContainer.scrollHeight) + 'px';
+                        translationBox.style.height = newHeight;
+                        imageContainer.style.height = newHeight;
+                    }).catch(error => {
+                        console.error('Error:', error);
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        document.getElementById('play-audio-btn').addEventListener('click', function() {
+            const text = document.getElementById('translation-text').textContent;
+            if (text) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ko-KR';
+                speechSynthesis.speak(utterance);
+            } else {
+                alert('No text available.');
+            }
+        });
+        document.getElementById('stop-audio-btn').addEventListener('click', function() {
+            if (audio) {
+                speechSynthesis.cancel();
+            }
+        });
+    </script>
+</body>
+</html>
