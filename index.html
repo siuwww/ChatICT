@@ -123,6 +123,7 @@
                 <div id="uploaded-image-container">
                     <span class="placeholder">Upload an image to start</span>
                     <img id="uploaded-image" src="" alt="Uploaded Image">
+                    <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="handleFileChange(event)">
                 </div>
                 <div class="translation-box" id="translation-box">
                     <pre id="translation-text">read image</pre>
@@ -143,6 +144,17 @@
             recognizeText(uri);
         }
 
+        function handleFileChange(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    handleImageUri(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
         function recognizeText(imageSrc) {
             Tesseract.recognize(
                 imageSrc,
@@ -156,6 +168,10 @@
             }).catch(err => {
                 console.error(err);
             });
+        }
+
+        function triggerFileInput() {
+            document.getElementById('file-input').click();
         }
     </script>
 </body>
