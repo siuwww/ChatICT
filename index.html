@@ -168,6 +168,8 @@
                         const newHeight = Math.max(translationBox.scrollHeight, imageContainer.scrollHeight) + 'px';
                         translationBox.style.height = newHeight;
                         imageContainer.style.height = newHeight;
+                        // Android 인터페이스로 텍스트 전달
+                        Android.processText(text);
                     }).catch(error => {
                         console.error('Error:', error);
                     });
@@ -192,6 +194,17 @@
                 speechSynthesis.cancel();
             }
         });
+
+        // JavaScript 함수 추가
+        function displayExtractedText(text) {
+            document.getElementById('translation-text').textContent = text;
+            // 높이 조정 코드
+            const translationBox = document.querySelector('.translation-box');
+            const imageContainer = document.getElementById('uploaded-image-container');
+            const newHeight = Math.max(translationBox.scrollHeight, imageContainer.scrollHeight) + 'px';
+            translationBox.style.height = newHeight;
+            imageContainer.style.height = newHeight;
+        }
     </script>
 </body>
 </html>
