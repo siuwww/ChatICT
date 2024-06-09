@@ -48,32 +48,39 @@
         .content:hover {
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
         }
-        .image-translation-section {
+        .panel-container {
             display: flex;
             width: 100%;
             justify-content: space-between;
             align-items: flex-start;
         }
-        #uploaded-image-container, .translation-box {
+        .panel {
             width: 45%;
-            height: 300px;
             border-radius: 12px;
             padding: 26px;
-            transition: border-color 0.3s;
             background-color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            border: 2px dashed #272B73;
+            justify-content: space-between;
+            border: 2px solid #272B73;
             position: relative;
+            min-height: 400px; /* Fixed height */
         }
-        #uploaded-image-container:hover, .translation-box:hover {
+        .panel:hover {
             border-color: #00a398;
         }
+        #uploaded-image-container {
+            width: 100%;
+            height: 300px; /* Fixed height */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         #uploaded-image {
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
             border-radius: 12px;
             display: none;
         }
@@ -81,15 +88,27 @@
             font-size: 20px;
             color: #6c757d;
         }
-        .translation-box {
-            font-size: 25px;
-            color: #6c757d;
+        .content-panel {
+            font-size: 18px;
+            color: #333;
             white-space: pre-wrap;
             word-wrap: break-word;
             overflow-y: auto;
-            max-height: 600px;
-            flex-direction: column;
+            height: 100%;
+            max-height: 580px;
+            width: 100%;
+            display: flex;
             align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        #translation-text {
+            font-size: 18px;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+            text-align: center;
         }
         .icon-button {
             width: 40px;
@@ -107,9 +126,9 @@
         .button-container {
             display: flex;
             justify-content: right;
+            flex-wrap: nowrap;
             width: 100%;
-            position: absolute;
-            bottom: 10px;
+            margin-top: 10px; /* Added margin-top for spacing */
         }
     </style>
 </head>
@@ -119,62 +138,103 @@
     </header>
     <main>
         <div class="content">
-            <div class="image-translation-section">
-                <div id="uploaded-image-container">
-                    <span class="placeholder">Upload an image to start</span>
-                    <img id="uploaded-image" src="" alt="Uploaded Image">
-                    <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="handleFileChange(event)">
+            <div class="panel-container">
+                <div class="panel">
+                    <div id="uploaded-image-container">
+                        <span class="placeholder"></span>
+                        <img id="uploaded-image" src="" alt="Uploaded Image">
+                    </div>
+                    <div class="button-container">
+                        <img src="https://github.com/siuwww/ChatICT/blob/main/image/upload-icon.png" id="upload-icon" class="icon-button" onclick="document.getElementById('file-input').click();">
+                        <img src="https://github.com/siuwww/ChatICT/blob/main/image/camera-icon.png" id="act-camera-btn" class="icon-button">
+                        <input type="file" id="file-input" accept="image/*" style="display:none;">
+                    </div>
                 </div>
-                <div class="translation-box" id="translation-box">
-                    <pre id="translation-text">read image</pre>
+                <div class="panel">
+                    <div class="content-panel" id="translation-box">
+                        <span id="translation-text" class="placeholder"></span>
+                    </div>
+                    <div class="button-container">
+                        <img src="https://chatict.github.io/ocr/images/copy-icon.png" id="copy-text-btn" class="icon-button">
+                        <img src="https://chatict.github.io/ocr/images/play-icon.png" id="play-audio-btn" class="icon-button">
+                        <img src="https://chatict.github.io/ocr/images/stop-icon.png" id="stop-audio-btn" class="icon-button">
+                    </div>
                 </div>
             </div>
         </div>
-        <img src="https://siuwww.github.io/ChatICT/images/anu.gif" alt="ANU Logo" class="footer-logo">
+        <img src="https://chatict.github.io/ocr/images/anu.gif" alt="ANU Logo" class="footer-logo">
     </main>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script>
-        document.getElementById('uploaded-image').style.display = 'none';
+        let audio = null;
 
-        function handleImageUri(uri) {
-            const img = document.getElementById('uploaded-image');
-            img.src = uri;
-            img.style.display = 'block';
-            document.querySelector('#uploaded-image-container .placeholder').style.display = 'none';
-            recognizeText(uri);
-            // Android 인터페이스를 통해 이미지 URI를 안드로이드로 전달
-            Android.handleImage(uri);
-        }
-
-        function handleFileChange(event) {
+        document.getElementById('file-input').addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    handleImageUri(e.target.result);
+                    const img = document.getElementById('uploaded-image');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    document.querySelector('.placeholder').style.display = 'none';
+                    // Process the image with Tesseract
+                    Tesseract.recognize(
+                        e.target.result,
+                        'kor+eng',
+                        {
+                            logger: m => console.log(m)
+                        }
+                    ).then(({ data: { text } }) => {
+                        const translationText = document.getElementById('translation-text');
+                        translationText.textContent = text;
+                        translationText.classList.remove('placeholder'); // Remove placeholder class
+                        // Adjust the height of the containers to be equal
+                        const translationBox = document.querySelector('#translation-box');
+                        const imageContainer = document.getElementById('uploaded-image-container');
+                        const newHeight = Math.max(translationBox.scrollHeight, imageContainer.scrollHeight) + 'px';
+                        translationBox.style.height = newHeight;
+                        imageContainer.style.height = newHeight;
+                    }).catch(error => {
+                        console.error('Error:', error);
+                    });
                 };
                 reader.readAsDataURL(file);
             }
-        }
+        });
 
-        function recognizeText(imageSrc) {
-            Tesseract.recognize(
-                imageSrc,
-                'kor+eng',
-                {
-                    logger: m => console.log(m)
+        document.getElementById('copy-text-btn').addEventListener('click', function() {
+            const text = document.getElementById('translation-text').textContent;
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Text copied to clipboard.');
+                }).catch(err => {
+                    console.error('Error copying text: ', err);
+                });
+            } else {
+                alert('No text available to copy.');
+            }
+        });
+
+        document.getElementById('play-audio-btn').addEventListener('click', function() {
+            const text = document.getElementById('translation-text').textContent;
+            if (text) {
+                if (audio) {
+                    audio.cancel();
                 }
-            ).then(({ data: { text } }) => {
-                document.getElementById('translation-text').innerText = text;
-                Android.processText(text); // 추출된 텍스트를 Android 인터페이스로 전달
-            }).catch(err => {
-                console.error(err);
-            });
-        }
+                audio = new SpeechSynthesisUtterance(text);
+                audio.lang = 'ko-KR';
+                speechSynthesis.speak(audio);
+            } else {
+                alert('No text available.');
+            }
+        });
 
-        function triggerFileInput() {
-            document.getElementById('file-input').click();
-        }
+        document.getElementById('stop-audio-btn').addEventListener('click', function() {
+            if (audio) {
+                speechSynthesis.cancel();
+                audio = null;
+            }
+        });
     </script>
 </body>
 </html>
