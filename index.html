@@ -103,12 +103,11 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             overflow-y: auto;
-            height: 100%;
             max-height: 580px;
             width: 100%;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            align-items: flex-start; /* Align items to the top */
+            justify-content: flex-start;
             position: relative;
         }
         #translation-text {
@@ -118,6 +117,7 @@
             word-wrap: break-word;
             overflow-y: auto;
             text-align: center;
+            width: 100%; /* Ensure text takes full width */
         }
         .icon-button {
             width: 40px;
@@ -130,7 +130,7 @@
             bottom: 10px;
             right: 10px;
             width: 250px;
-            height: auto.
+            height: auto;
         }
         .button-container {
             display: flex;
@@ -140,6 +140,8 @@
             margin-top: 10px; /* Added margin-top for spacing */
         }
     </style>
+    <!-- Include the pdfjs-dist library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.7.570/pdf.min.js"></script>
 </head>
 <body>
     <header>
@@ -178,7 +180,6 @@
         <img src="https://github.com/siuwww/ChatICT/blob/main/image/anu.gif?raw=true" alt="ANU Logo" class="footer-logo">
     </main>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.7.570/pdf.min.js"></script>
     <script>
         let audio = null;
 
@@ -200,14 +201,8 @@
                         }
                     ).then(({ data: { text } }) => {
                         const translationText = document.getElementById('translation-text');
-                        translationText.textContent = text;
+                        translationText.textContent = formatExtractedText(text);
                         translationText.classList.remove('placeholder'); // Remove placeholder class
-                        // Adjust the height of the containers to be equal
-                        const translationBox = document.querySelector('#translation-box');
-                        const imageContainer = document.getElementById('uploaded-image-container');
-                        const newHeight = Math.max(translationBox.scrollHeight, imageContainer.scrollHeight) + 'px';
-                        translationBox.style.height = newHeight;
-                        imageContainer.style.height = newHeight;
                     }).catch(error => {
                         console.error('Error:', error);
                     });
@@ -232,15 +227,10 @@
                                 extractedText += item.str + ' ';
                             });
                         }
+                        const formattedText = formatExtractedText(extractedText);
                         const translationText = document.getElementById('translation-text');
-                        translationText.textContent = extractedText;
+                        translationText.textContent = formattedText;
                         translationText.classList.remove('placeholder');
-                        // Adjust the height of the containers to be equal
-                        const translationBox = document.querySelector('#translation-box');
-                        const imageContainer = document.getElementById('uploaded-image-container');
-                        const newHeight = Math.max(translationBox.scrollHeight, imageContainer.scrollHeight) + 'px';
-                        translationBox.style.height = newHeight;
-                        imageContainer.style.height = newHeight;
                         // Show confirmation text in the left panel
                         const uploadedImageContainer = document.getElementById('uploaded-image-container');
                         uploadedImageContainer.innerHTML = '<span class="placeholder">PDF Upload and Extraction Complete</span>';
@@ -286,6 +276,11 @@
                 audio = null;
             }
         });
+
+        function formatExtractedText(text) {
+            // Split text into lines and join with proper spacing
+            return text.split(/[\r\n]+/).map(line => line.trim()).join('\n');
+        }
     </script>
 </body>
 </html>
