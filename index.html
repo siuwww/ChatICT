@@ -179,9 +179,22 @@
         </div>
         <img src="https://github.com/siuwww/ChatICT/blob/main/image/anu.gif?raw=true" alt="ANU Logo" class="footer-logo">
     </main>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2"></script>
     <script>
         let audio = null;
+        const languages = {
+            eng: 'English',
+            kor: 'Korean',
+            chi_sim: 'Chinese Simplified',
+            jpn: 'Japanese',
+            spa: 'Spanish',
+            fra: 'French',
+            ara: 'Arabic',
+            rus: 'Russian',
+            por: 'Portuguese'
+        };
+
+        const langCodes = Object.keys(languages);
 
         document.getElementById('file-input').addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -195,7 +208,7 @@
                     // Process the image with Tesseract
                     Tesseract.recognize(
                         e.target.result,
-                        'kor+eng',
+                        langCodes.join('+'),
                         {
                             logger: m => console.log(m)
                         }
@@ -235,7 +248,7 @@
                             const imageData = canvas.toDataURL('image/png');
 
                             // Perform OCR on the extracted image
-                            const { data: { text } } = await Tesseract.recognize(imageData, 'kor+eng', {
+                            const { data: { text } } = await Tesseract.recognize(imageData, langCodes.join('+'), {
                                 logger: m => console.log(m)
                             });
 
@@ -272,12 +285,13 @@
 
         document.getElementById('play-audio-btn').addEventListener('click', function() {
             const text = document.getElementById('translation-text').textContent;
+            const selectedLang = detectLanguage(text);
             if (text) {
                 if (audio) {
                     audio.cancel();
                 }
                 audio = new SpeechSynthesisUtterance(text);
-                audio.lang = 'ko-KR';
+                audio.lang = selectedLang;
                 speechSynthesis.speak(audio);
             } else {
                 alert('No text available.');
@@ -294,6 +308,12 @@
         function formatExtractedText(text) {
             // Split text into lines and join with proper spacing
             return text.split(/[\r\n]+/).map(line => line.trim()).join('\n');
+        }
+
+        function detectLanguage(text) {
+            // Dummy function to detect language; replace with a proper language detection logic if needed
+            // For demonstration purposes, we'll return 'en-US' (English) by default
+            return 'en-US';
         }
     </script>
 </body>
