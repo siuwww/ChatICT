@@ -184,12 +184,7 @@
         let audio = null;
         const languages = {
             eng: 'English',
-            kor: 'Korean',
-            jpn: 'Japanese',
-            spa: 'Spanish',
-            fra: 'French',
-            rus: 'Russian',
-            por: 'Portuguese'
+            kor: 'Korean'
         };
 
         const langCodes = Object.keys(languages);
@@ -309,9 +304,13 @@
         }
 
         function detectLanguage(text) {
-            // Dummy function to detect language; replace with a proper language detection logic if needed
-            // For demonstration purposes, we'll return 'en-US' (English) by default
-            return 'en-US';
+            // Simple language detection based on characters
+            const koreanRegex = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/;
+            if (koreanRegex.test(text)) {
+                return 'ko-KR';
+            } else {
+                return 'en-US';
+            }
         }
     </script>
 </body>
