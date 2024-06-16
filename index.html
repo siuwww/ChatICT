@@ -130,7 +130,7 @@
             bottom: 10px;
             right: 10px;
             width: 250px;
-            height: auto;
+            height: auto.
         }
         .button-container {
             display: flex;
@@ -153,12 +153,14 @@
             <div class="panel-container">
                 <div class="panel">
                     <div id="uploaded-image-container">
-                        <span class="placeholder"></span>
+                        <span class="placeholder">Upload an image or PDF</span>
                         <img id="uploaded-image" src="" alt="Uploaded Image">
                     </div>
                     <div class="button-container">
                         <img src="https://raw.githubusercontent.com/siuwww/ChatICT/f3f4eb15a2ff85e20e0696695856fa541e071cf5/image/upload-icon.png" id="upload-icon" class="icon-button" onclick="document.getElementById('file-input').click();">
                         <input type="file" id="file-input" accept="image/*" style="display:none;">
+                        <img src="https://raw.githubusercontent.com/siuwww/ChatICT/f3f4eb15a2ff85e20e0696695856fa541e071cf5/image/upload-icon.png" id="pdf-upload-icon" class="icon-button" onclick="document.getElementById('pdf-input').click();">
+                        <input type="file" id="pdf-input" accept="application/pdf" style="display:none;">
                     </div>
                 </div>
                 <div class="panel">
@@ -176,6 +178,7 @@
         <img src="https://github.com/siuwww/ChatICT/blob/main/image/anu.gif?raw=true" alt="ANU Logo" class="footer-logo">
     </main>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.7.570/pdf.min.js"></script>
     <script>
         let audio = null;
 
@@ -210,6 +213,43 @@
                     });
                 };
                 reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('pdf-input').addEventListener('change', async function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const pdfData = new Uint8Array(e.target.result);
+                        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                        let extractedText = '';
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            textContent.items.forEach(item => {
+                                extractedText += item.str + ' ';
+                            });
+                        }
+                        const translationText = document.getElementById('translation-text');
+                        translationText.textContent = extractedText;
+                        translationText.classList.remove('placeholder');
+                        // Adjust the height of the containers to be equal
+                        const translationBox = document.querySelector('#translation-box');
+                        const imageContainer = document.getElementById('uploaded-image-container');
+                        const newHeight = Math.max(translationBox.scrollHeight, imageContainer.scrollHeight) + 'px';
+                        translationBox.style.height = newHeight;
+                        imageContainer.style.height = newHeight;
+                        // Show confirmation text in the left panel
+                        const uploadedImageContainer = document.getElementById('uploaded-image-container');
+                        uploadedImageContainer.innerHTML = '<span class="placeholder">PDF Upload and Extraction Complete</span>';
+                    } catch (error) {
+                        console.error('Error during PDF processing:', error);
+                        alert('Failed to process PDF file.');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
             }
         });
 
