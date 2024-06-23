@@ -139,6 +139,22 @@
             width: 100%;
             margin-top: 10px; /* Added margin-top for spacing */
         }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 12px;
+            margin-top: 20px;
+            display: none;
+        }
+        .progress-bar {
+            width: 0;
+            height: 20px;
+            background-color: #4caf50;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+            transition: width 0.3s;
+        }
     </style>
     <!-- Include the pdfjs-dist library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.7.570/pdf.min.js"></script>
@@ -159,10 +175,13 @@
                         <img id="uploaded-image" src="" alt="Uploaded Image">
                     </div>
                     <div class="button-container">
-                        <img src="https://raw.githubusercontent.com/siuwww/ChatICT/f3f4eb15a2ff85e20e0696695856fa541e071cf5/image/upload-icon.png" id="upload-icon" class="icon-button" onclick="document.getElementById('file-input').click();">
+                        <img src="https://raw.githubusercontent.com/siuwww/ChatICT/2251f390afe8f51369cb08904df7b0e5d4f6580d/image/upload-icon.png" id="upload-icon" class="icon-button" onclick="document.getElementById('file-input').click();">
                         <input type="file" id="file-input" accept="image/*" style="display:none;">
-                        <img src="https://raw.githubusercontent.com/siuwww/ChatICT/f3f4eb15a2ff85e20e0696695856fa541e071cf5/image/upload-icon.png" id="pdf-upload-icon" class="icon-button" onclick="document.getElementById('pdf-input').click();">
+                        <img src="https://github.com/siuwww/ChatICT/blob/main/image/pdf-upload-icon.png?raw=true" id="pdf-upload-icon" class="icon-button" onclick="document.getElementById('pdf-input').click();">
                         <input type="file" id="pdf-input" accept="application/pdf" style="display:none;">
+                    </div>
+                    <div class="progress-bar-container" id="progress-bar-container">
+                        <div class="progress-bar" id="progress-bar"></div>
                     </div>
                 </div>
                 <div class="panel">
@@ -179,17 +198,19 @@
         </div>
         <img src="https://github.com/siuwww/ChatICT/blob/main/image/anu.gif?raw=true" alt="ANU Logo" class="footer-logo">
     </main>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script>
-        let audio = null;
-        const languages = {
-            eng: 'English',
-            kor: 'Korean'
-        };
-
-        const langCodes = Object.keys(languages);
+        let audioQueue = [];
+        let isProcessing = false; // Flag to track the OCR process
+        let currentUtterance = null; // Track the current utterance
 
         document.getElementById('file-input').addEventListener('change', function(event) {
+            resetUploadSection(); // Reset the upload section
+            if (isProcessing) {
+                alert('현재 다른 OCR 프로세스가 실행 중입니다. 계속하려면 새로고침을 해주세요.');
+                return;
+            }
+            isProcessing = true;
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
@@ -201,7 +222,7 @@
                     // Process the image with Tesseract
                     Tesseract.recognize(
                         e.target.result,
-                        langCodes.join('+'),
+                        'kor+eng',
                         {
                             logger: m => console.log(m)
                         }
@@ -209,8 +230,10 @@
                         const translationText = document.getElementById('translation-text');
                         translationText.textContent = formatExtractedText(text);
                         translationText.classList.remove('placeholder'); // Remove placeholder class
+                        isProcessing = false; // Reset the flag
                     }).catch(error => {
                         console.error('Error:', error);
+                        isProcessing = false; // Reset the flag
                     });
                 };
                 reader.readAsDataURL(file);
@@ -218,6 +241,12 @@
         });
 
         document.getElementById('pdf-input').addEventListener('change', async function(event) {
+            resetUploadSection(); // Reset the upload section
+            if (isProcessing) {
+                alert('Another OCR process is currently running. Please wait.');
+                return;
+            }
+            isProcessing = true;
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
@@ -226,26 +255,42 @@
                         const pdfData = new Uint8Array(e.target.result);
                         const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
                         let extractedText = '';
+                        const progressBarContainer = document.getElementById('progress-bar-container');
+                        const progressBar = document.getElementById('progress-bar');
+                        progressBarContainer.style.display = 'block'; // Show progress bar
                         for (let i = 1; i <= pdf.numPages; i++) {
                             const page = await pdf.getPage(i);
-                            const viewport = page.getViewport({ scale: 1.5 });
-                            const canvas = document.createElement('canvas');
-                            const context = canvas.getContext('2d');
-                            canvas.height = viewport.height;
-                            canvas.width = viewport.width;
 
-                            // Render the page on the canvas
-                            await page.render({ canvasContext: context, viewport: viewport }).promise;
+                            // Attempt to extract text content from the page
+                            const textContent = await page.getTextContent();
+                            let pageText = textContent.items.map(item => item.str).join(' ');
 
-                            // Extract image data from the canvas
-                            const imageData = canvas.toDataURL('image/png');
+                            if (!pageText.trim()) {
+                                // If no text content, render the page to an image and use OCR
+                                const viewport = page.getViewport({ scale: 1.5 });
+                                const canvas = document.createElement('canvas');
+                                const context = canvas.getContext('2d');
+                                canvas.height = viewport.height;
+                                canvas.width = viewport.width;
 
-                            // Perform OCR on the extracted image
-                            const { data: { text } } = await Tesseract.recognize(imageData, langCodes.join('+'), {
-                                logger: m => console.log(m)
-                            });
+                                // Render the page on the canvas
+                                await page.render({ canvasContext: context, viewport: viewport }).promise;
 
-                            extractedText += text + '\n';
+                                // Extract image data from the canvas
+                                const imageData = canvas.toDataURL('image/png');
+
+                                // Perform OCR on the extracted image
+                                const { data: { text } } = await Tesseract.recognize(imageData, 'kor+eng', {
+                                    logger: m => console.log(m)
+                                });
+                                pageText = text;
+                            }
+
+                            extractedText += pageText + '\n';
+
+                            // Update progress bar
+                            const progress = (i / pdf.numPages) * 100;
+                            progressBar.style.width = `${progress}%`;
                         }
                         const formattedText = formatExtractedText(extractedText);
                         const translationText = document.getElementById('translation-text');
@@ -254,9 +299,13 @@
                         // Show confirmation text in the left panel
                         const uploadedImageContainer = document.getElementById('uploaded-image-container');
                         uploadedImageContainer.innerHTML = '<span class="placeholder">PDF Upload and Extraction Complete</span>';
+                        isProcessing = false; // Reset the flag
+                        progressBarContainer.style.display = 'none'; // Hide progress bar
                     } catch (error) {
                         console.error('Error during PDF processing:', error);
                         alert('Failed to process PDF file.');
+                        isProcessing = false; // Reset the flag
+                        progressBarContainer.style.display = 'none'; // Hide progress bar
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -278,23 +327,28 @@
 
         document.getElementById('play-audio-btn').addEventListener('click', function() {
             const text = document.getElementById('translation-text').textContent;
-            const selectedLang = detectLanguage(text);
             if (text) {
-                if (audio) {
-                    audio.cancel();
+                if (currentUtterance) {
+                    speechSynthesis.cancel();
+                    currentUtterance = null;
                 }
-                audio = new SpeechSynthesisUtterance(text);
-                audio.lang = selectedLang;
-                speechSynthesis.speak(audio);
+                const segments = splitTextByLanguage(text);
+                audioQueue = segments.map(segment => {
+                    const utterance = new SpeechSynthesisUtterance(segment.text);
+                    utterance.lang = segment.lang;
+                    return utterance;
+                });
+                playAudioQueue();
             } else {
                 alert('No text available.');
             }
         });
 
         document.getElementById('stop-audio-btn').addEventListener('click', function() {
-            if (audio) {
+            if (currentUtterance) {
                 speechSynthesis.cancel();
-                audio = null;
+                currentUtterance = null;
+                audioQueue = [];
             }
         });
 
@@ -303,14 +357,45 @@
             return text.split(/[\r\n]+/).map(line => line.trim()).join('\n');
         }
 
-        function detectLanguage(text) {
-            // Simple language detection based on characters
-            const koreanRegex = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/;
-            if (koreanRegex.test(text)) {
-                return 'ko-KR';
-            } else {
-                return 'en-US';
+        function splitTextByLanguage(text) {
+            const koreanChar = /[\u3131-\uD79D]/ugi;
+            const englishChar = /[a-zA-Z]/;
+            const segments = [];
+            let currentLang = null;
+            let currentSegment = '';
+
+            for (const char of text) {
+                const charLang = koreanChar.test(char) ? 'ko-KR' : englishChar.test(char) ? 'en-US' : currentLang;
+                if (charLang !== currentLang && currentSegment) {
+                    segments.push({ text: currentSegment, lang: currentLang });
+                    currentSegment = '';
+                }
+                currentLang = charLang;
+                currentSegment += char;
             }
+            if (currentSegment) {
+                segments.push({ text: currentSegment, lang: currentLang });
+            }
+            return segments;
+        }
+
+        function playAudioQueue() {
+            if (audioQueue.length > 0) {
+                currentUtterance = audioQueue.shift();
+                currentUtterance.onend = () => {
+                    currentUtterance = null;
+                    playAudioQueue();
+                };
+                speechSynthesis.speak(currentUtterance);
+            }
+        }
+
+        function resetUploadSection() {
+            const img = document.getElementById('uploaded-image');
+            img.style.display = 'none';
+            img.src = '';
+            const placeholder = document.querySelector('.placeholder');
+            placeholder.style.display = 'block';
         }
     </script>
 </body>
